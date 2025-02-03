@@ -549,9 +549,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
     }
     return false;
   case KC_SECRET_1:
-    if (record->event.pressed)
-    {
-      SEND_STRING(SECRET_1);
+    if (record->event.pressed) {
+        // Add explicit string conversion
+        const char *secret = SECRET_1;
+        if (secret[0] != '\0') {  // Only send if not empty
+            SEND_STRING(secret);
+        }
     }
     return false;
   default:

@@ -6,6 +6,7 @@ jobs:
   update_and_build:
     name: Build QMK firmware
     runs-on: ubuntu-latest
+    environment: build_env
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
