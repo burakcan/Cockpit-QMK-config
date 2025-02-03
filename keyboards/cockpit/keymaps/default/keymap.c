@@ -5,6 +5,10 @@
 #define SECRET_1 ""  // Default to empty string if not defined during build
 #endif
 
+#if defined(SECRET_1)
+#pragma message "[DEBUG] Compiler received SECRET_1: " SECRET_1
+#endif
+
 // RGB configuration
 #define RGBLIGHT_LAYERS
 
@@ -550,9 +554,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
     return false;
   case KC_SECRET_1:
     if (record->event.pressed) {
-        const char *secret = SECRET_1;
-        if (secret[0] != '\0') {  // Only send if not empty
-            send_string(secret);
+        if (SECRET_1[0] != '\0') {
+            #ifdef CONSOLE_ENABLE
+            uprintf("[DEBUG] Sending SECRET_1: %s\n", SECRET_1);
+            #endif
+            send_string_P(PSTR(SECRET_1));
+        } else {
+            #ifdef CONSOLE_ENABLE
+            uprintf("[DEBUG] SECRET_1 is empty\n");
+            #endif
         }
     }
     return false;
