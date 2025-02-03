@@ -18,11 +18,11 @@ jobs:
           path: /home/runner/.cache/pip
           key: ${{ runner.os }}-build-${{ env.cache-name }}-
           restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-
-      
+
       - name: Install dependencies for qmk build
         run: |
           sudo apt-get update
-          sudo apt-get install -y git python3-pip dfu-util dfu-programmer avrdude 
+          sudo apt-get install -y git python3-pip dfu-util dfu-programmer avrdude
 
       - name: Install qmk using pip
         working-directory: ./qmk_firmware
@@ -33,21 +33,11 @@ jobs:
       - name: Prepare qmk_firmware folder
         run: cp -R keyboards/* qmk_firmware/keyboards/
 
-      - name: Build cockpit-keyboard-pcb firmware 2040
-        working-directory: ./qmk_firmware
-        run: qmk compile -kb cockpit -km default -e CONVERT_TO=promicro_rp2040 
-
       - name: Build cockpit-keyboard-pcb firmware
         working-directory: ./qmk_firmware
         env:
           SECRET_1: ${{ secrets.SECRET_1 }}
-        run: qmk compile -kb cockpit -km default 
-
-      - name: Archive 2040
-        uses: actions/upload-artifact@v4
-        with:
-          name: cockpit-keyboard-pcb-2040
-          path: qmk_firmware/cockpit_default_promicro_rp2040.uf2
+        run: qmk compile -kb cockpit -km default
 
       - name: Archive Default
         uses: actions/upload-artifact@v4
