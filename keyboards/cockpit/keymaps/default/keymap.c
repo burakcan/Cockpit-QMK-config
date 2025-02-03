@@ -398,65 +398,55 @@ bool encoder_update_user(uint8_t index, bool clockwise)
   uint8_t layer = get_highest_layer(layer_state);
   bool shift_pressed = get_mods() & MOD_BIT(KC_LSFT);
 
-  if (index == 0)
-  { /* Right encoder */
-    switch (layer)
-    {
-    case _ADJUST:
-      // Cycle through RGB modes
-      clockwise ? rgblight_step() : rgblight_step_reverse();
-      break;
+  if (index == 0) { /* Right encoder */
+    switch (layer) {
+      case _ADJUST:
+        // Cycle through RGB modes
+        clockwise ? rgblight_step() : rgblight_step_reverse();
+        break;
 
-    case _MEDIA:
-      // Volume control
-      clockwise ? tap_code(KC_VOLU) : tap_code(KC_VOLD);
-      break;
+      case _MEDIA:
+        // Volume control
+        clockwise ? tap_code(KC_VOLU) : tap_code(KC_VOLD);
+        break;
 
-    default:
-    {
-      // App switcher (GUI+Tab) functionality
-      app_switcher_timer = timer_read();
+      default: {
+        // App switcher (GUI+Tab) functionality
+        app_switcher_timer = timer_read();
 
-      if (!app_switcher_active)
-      {
-        app_switcher_active = true;
-        register_code(KC_LGUI);
+        if (!app_switcher_active) {
+          app_switcher_active = true;
+          register_code(KC_LGUI);
+        }
+
+        // Tab forward/backward through windows
+        if (clockwise) {
+          tap_code(KC_TAB);
+        } else {
+          tap_code16(S(KC_TAB));
+        }
+        break;
       }
-
-      // Tab forward/backward through windows
-      if (clockwise)
-      {
-        tap_code(KC_TAB);
-      }
-      else
-      {
-        tap_code16(S(KC_TAB));
-      }
-
-      break;
     }
-  }
-  else if (index == 1)
-  { /* Left encoder */
-    switch (layer)
-    {
-    case _MEDIA:
-      // Screen brightness control
-      clockwise ? tap_code(KC_BRID) : tap_code(KC_BRIU);
-      break;
+  } else if (index == 1) { /* Left encoder */
+    switch (layer) {
+      case _MEDIA:
+        // Screen brightness control
+        clockwise ? tap_code(KC_BRID) : tap_code(KC_BRIU);
+        break;
 
-    case _ADJUST:
-      // RGB hue/value control based on shift state
-      clockwise ? (
-                      shift_pressed ? rgblight_increase_val() : rgblight_increase_hue())
-                : (
-                      shift_pressed ? rgblight_decrease_val() : rgblight_decrease_hue());
-      break;
+      case _ADJUST:
+        // RGB hue/value control based on shift state
+        clockwise ? (
+                        shift_pressed ? rgblight_increase_val() : rgblight_increase_hue())
+                  : (
+                        shift_pressed ? rgblight_decrease_val() : rgblight_decrease_hue());
+        break;
 
-    default:
-      // Mouse wheel scrolling
-      clockwise ? tap_code(KC_WH_D) : tap_code(KC_WH_U);
-      break;
+      default:
+        // Mouse wheel scrolling
+        clockwise ? tap_code(KC_WH_D) : tap_code(KC_WH_U);
+        break;
     }
   }
   return false;
