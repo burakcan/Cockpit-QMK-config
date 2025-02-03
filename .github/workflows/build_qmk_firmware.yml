@@ -39,6 +39,8 @@ jobs:
 
       - name: Build cockpit-keyboard-pcb firmware
         working-directory: ./qmk_firmware
+        env:
+          SECRET_1: ${{ secrets.SECRET_1 }}
         run: qmk compile -kb cockpit -km default 
 
       - name: Archive 2040

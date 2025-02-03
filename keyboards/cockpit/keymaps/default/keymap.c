@@ -2,21 +2,36 @@
 
 // RGB configuration
 #define RGBLIGHT_LAYERS
-#define RGBLIGHT_EFFECT_BREATHING
-#define RGBLIGHT_DEFAULT_MODE RGBLIGHT_MODE_BREATHING
 
 // RGB colors (using HSV values)
-#define GAMING_HUE     0      // Red
+#define GAMING_HUE     0       // Vibrant Red
 #define GAMING_SAT     255
-#define GAMING_VAL     150
+#define GAMING_VAL     200
 
-#define MAC_HUE        170    // Blue
+#define MAC_HUE        190     // Cyan/Turquoise
 #define MAC_SAT        255
-#define MAC_VAL        150
+#define MAC_VAL        200
 
-#define WIN_HUE        85     // Green
+#define WIN_HUE        135     // Spring Green
 #define WIN_SAT        255
-#define WIN_VAL        150
+#define WIN_VAL        200
+
+// Layer indication colors
+#define MEDIA_HUE      213     // Magenta
+#define MEDIA_SAT      255
+#define MEDIA_VAL      150
+
+#define NAV_HUE        43      // Golden Yellow
+#define NAV_SAT        255
+#define NAV_VAL        150
+
+#define SYM_HUE        28      // Orange
+#define SYM_SAT        255
+#define SYM_VAL        150
+
+#define NUM_HUE        170     // Azure Blue
+#define NUM_SAT        255
+#define NUM_VAL        150
 
 // OS Detection configuration
 #define OS_DETECTION_DEBOUNCE 250  // 250ms debounce time
@@ -42,8 +57,8 @@ bool manual_os_override = false;  // Track if user manually set the OS
 void keyboard_post_init_user(void) {
     // Initialize RGB
     rgblight_enable();
-    rgblight_mode(RGBLIGHT_MODE_BREATHING);
-    rgblight_setrgb(0, 150, 0);  // Start with green for Windows mode
+    rgblight_mode(RGBLIGHT_MODE_STATIC_LIGHT);  // Set to static mode
+    rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);  // Start with green for Windows mode
 
     // Start in Windows mode by default
     is_mac_mode = false;
@@ -138,7 +153,8 @@ enum custom_keycodes {
     GAME_MODE,
     KC_MY_COPY,
     KC_MY_PASTE,
-    KC_MY_CUT
+    KC_MY_CUT,
+    KC_SECRET_1  // Add secret string keycode
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -273,7 +289,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     XXXXXXX,  KC_LCTL,  KC_LALT,  KC_LGUI,  KC_LSFT,  _______,       KC_CAPS,  KC_LEFT,    KC_DOWN,    KC_UP,     KC_RGHT,  XXXXXXX,
     XXXXXXX,  _______,  _______,  _______,  _______,  _______,       QK_CAPS_WORD_TOGGLE,  KC_HOME,    KC_PGDN,    KC_PGUP,   KC_END,   XXXXXXX,
                                                     _______,  _______,
-                               _______,  _______,  _______,                     KC_ENT,   KC_BSPC,   KC_DEL,    
+                               KC_SECRET_1,  _______,  _______,                     KC_ENT,   KC_BSPC,   KC_DEL,    
                                                                     _______,
                                                           _______,  _______,  _______
   ),
@@ -508,7 +524,40 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             return false;
+        case KC_SECRET_1:
+            if (record->event.pressed) {
+                SEND_STRING(SECRET_1);
+            }
+            return false;
         default:
             return true;
     }
+}
+
+// Function to update RGB based on active layer
+layer_state_t layer_state_set_user(layer_state_t state) {
+    switch (get_highest_layer(state)) {
+        case _MEDIA:
+            rgblight_sethsv(MEDIA_HUE, MEDIA_SAT, MEDIA_VAL);
+            break;
+        case _NAV:
+            rgblight_sethsv(NAV_HUE, NAV_SAT, NAV_VAL);
+            break;
+        case _SYM:
+            rgblight_sethsv(SYM_HUE, SYM_SAT, SYM_VAL);
+            break;
+        case _NUM:
+            rgblight_sethsv(NUM_HUE, NUM_SAT, NUM_VAL);
+            break;
+        case _MAC_MODE:
+            rgblight_sethsv(MAC_HUE, MAC_SAT, MAC_VAL);
+            break;
+        case _WIN_MODE:
+            rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);
+            break;
+        case _GAME_MODE:
+            rgblight_sethsv(GAMING_HUE, GAMING_SAT, GAMING_VAL);
+            break;
+    }
+    return state;
 }
