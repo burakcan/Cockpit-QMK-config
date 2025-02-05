@@ -38,9 +38,9 @@
 #define OS_DETECTION_SINGLE_REPORT // Only report once when stable
 
 // Add with other RGB color definitions:
-#define WHITE_HUE 0    // White (0 hue for warmth control)
-#define WHITE_SAT 0    // Start with pure white
-#define WHITE_VAL 255  // Full brightness
+#define WHITE_HUE 10    // Slightly warm white as default
+#define WHITE_SAT 10    // Very slight saturation for warmth
+#define WHITE_VAL 255   // Full brightness
 
 // Layer order is important - base layers must come first
 enum cockpit_layer
@@ -405,17 +405,16 @@ bool encoder_update_user(uint8_t index, bool clockwise)
 
   if (layer == _ADJUST && skadis_mode && white_mode) {
     if (index == 0) { /* Right encoder */
-      // Control warmth using saturation instead of hue
-      // This gives better control over warm/cool white
+      // Control warmth using hue (0-30) with a fixed low saturation
       if (clockwise) {
-        if (rgblight_get_sat() < 30) rgblight_increase_sat();
+        if (rgblight_get_hue() < 30) rgblight_increase_hue();
       } else {
-        if (rgblight_get_sat() > 0) rgblight_decrease_sat();
+        if (rgblight_get_hue() > 0) rgblight_decrease_hue();
       }
       return false;
     } else if (index == 1) { /* Left encoder */
-      // Control brightness
-      clockwise ? rgblight_increase_val() : rgblight_decrease_val();
+      // Control brightness (reversed direction)
+      clockwise ? rgblight_decrease_val() : rgblight_increase_val();
       return false;
     }
   }
@@ -516,7 +515,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
     if (record->event.pressed && skadis_mode) {
       white_mode = !white_mode;
       if (white_mode) {
-        rgblight_sethsv(0, 0, 255);  // Pure white using HSV
+        rgblight_sethsv(WHITE_HUE, WHITE_SAT, WHITE_VAL);  // Start with slightly warm white
       }
     }
     return false;
