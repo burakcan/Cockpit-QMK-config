@@ -38,11 +38,12 @@
 #define OS_DETECTION_SINGLE_REPORT // Only report once when stable
 
 // Update the warm white defines
-#define COOL_HUE 180    // Cool white (slight blue tint)
-#define WARM_HUE 12     // More orange/amber hue (closer to red)
-#define WARM_SAT 200    // High saturation for very noticeable warmth
-#define COOL_SAT 150    // Medium saturation for cool white
-#define WHITE_SAT 150   // Much higher saturation for noticeable warmth
+#define COOL_HUE 0      // Pure white (no tint)
+#define WARM_HUE 12     // Current warmest setting
+#define MAX_WARM_HUE 30 // Maximum warmth (very warm orange)
+#define COOL_SAT 0      // No saturation for pure white
+#define WARM_SAT 200    // Current warm saturation
+#define MAX_WARM_SAT 255 // Maximum saturation for very warm
 #define WARM_VAL 255    // Full brightness
 
 // Layer order is important - base layers must come first
@@ -409,17 +410,26 @@ bool encoder_update_user(uint8_t index, bool clockwise)
   if (layer == _ADJUST && skadis_mode && white_mode) {
     if (index == 0) { /* Right encoder */
       uint8_t current_hue = rgblight_get_hue();
+      uint8_t current_sat = rgblight_get_sat();
       uint8_t current_val = rgblight_get_val();
       
       if (clockwise) {
-        // Make cooler (towards blue)
-        if (current_hue < COOL_HUE) {
-          rgblight_sethsv(current_hue + 10, COOL_SAT, current_val);  // Larger steps
+        // Make cooler
+        if (current_hue == WARM_HUE) {
+          // Step from warm to pure white
+          rgblight_sethsv(COOL_HUE, COOL_SAT, current_val);
+        } else if (current_hue > WARM_HUE) {
+          // Step down through warm range
+          rgblight_sethsv(current_hue - 6, current_sat - 20, current_val);
         }
       } else {
-        // Make warmer (towards orange)
-        if (current_hue > WARM_HUE) {
-          rgblight_sethsv(current_hue - 10, WARM_SAT, current_val);  // Larger steps and higher saturation
+        // Make warmer
+        if (current_hue == COOL_HUE) {
+          // Step from pure white to warm
+          rgblight_sethsv(WARM_HUE, WARM_SAT, current_val);
+        } else if (current_hue < MAX_WARM_HUE) {
+          // Step up through warm range
+          rgblight_sethsv(current_hue + 6, current_sat + 20, current_val);
         }
       }
       return false;
