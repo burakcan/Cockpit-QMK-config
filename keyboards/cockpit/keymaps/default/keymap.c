@@ -40,6 +40,8 @@
 // Update the warm white defines
 #define COOL_HUE 180    // Cool white (slight blue tint)
 #define WARM_HUE 12     // More orange/amber hue (closer to red)
+#define WARM_SAT 200    // High saturation for very noticeable warmth
+#define COOL_SAT 150    // Medium saturation for cool white
 #define WHITE_SAT 150   // Much higher saturation for noticeable warmth
 #define WARM_VAL 255    // Full brightness
 
@@ -412,12 +414,12 @@ bool encoder_update_user(uint8_t index, bool clockwise)
       if (clockwise) {
         // Make cooler (towards blue)
         if (current_hue < COOL_HUE) {
-          rgblight_sethsv(current_hue + 5, WHITE_SAT, current_val);
+          rgblight_sethsv(current_hue + 10, COOL_SAT, current_val);  // Larger steps
         }
       } else {
         // Make warmer (towards orange)
         if (current_hue > WARM_HUE) {
-          rgblight_sethsv(current_hue - 5, WHITE_SAT, current_val);
+          rgblight_sethsv(current_hue - 10, WARM_SAT, current_val);  // Larger steps and higher saturation
         }
       }
       return false;
