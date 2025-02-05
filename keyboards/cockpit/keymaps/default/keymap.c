@@ -37,9 +37,10 @@
 #define OS_DETECTION_DEBOUNCE 250  // 250ms debounce time
 #define OS_DETECTION_SINGLE_REPORT // Only report once when stable
 
-// Remove RGB defines and replace with HSV for warm white
-#define WARM_HUE 25     // Slightly orange/yellow hue
-#define WARM_SAT 45     // Low saturation for subtle warmth
+// Update the warm white defines
+#define COOL_HUE 180    // Cool white (slight blue tint)
+#define WARM_HUE 12     // More orange/amber hue (closer to red)
+#define WHITE_SAT 150   // Much higher saturation for noticeable warmth
 #define WARM_VAL 255    // Full brightness
 
 // Layer order is important - base layers must come first
@@ -405,22 +406,22 @@ bool encoder_update_user(uint8_t index, bool clockwise)
 
   if (layer == _ADJUST && skadis_mode && white_mode) {
     if (index == 0) { /* Right encoder */
-      // Control warmth by adjusting hue and saturation together
-      uint16_t hue = rgblight_get_hue();
-      uint8_t sat = rgblight_get_sat();
+      uint8_t current_hue = rgblight_get_hue();
+      uint8_t current_val = rgblight_get_val();
       
       if (clockwise) {
-        // Make cooler
-        if (hue > 0) rgblight_decrease_hue();
-        if (sat > 0) rgblight_decrease_sat();
+        // Make cooler (towards blue)
+        if (current_hue < COOL_HUE) {
+          rgblight_sethsv(current_hue + 5, WHITE_SAT, current_val);
+        }
       } else {
-        // Make warmer
-        if (hue < 30) rgblight_increase_hue();
-        if (sat < 50) rgblight_increase_sat();
+        // Make warmer (towards orange)
+        if (current_hue > WARM_HUE) {
+          rgblight_sethsv(current_hue - 5, WHITE_SAT, current_val);
+        }
       }
       return false;
     } else if (index == 1) { /* Left encoder */
-      // Control brightness
       if (!clockwise) { // Increase brightness
         rgblight_increase_val();
       } else { // Decrease brightness
@@ -517,7 +518,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
       if (skadis_mode) {
         rgblight_enable();
         if (white_mode) {
-          rgblight_sethsv(WARM_HUE, WARM_SAT, WARM_VAL);
+          rgblight_sethsv(WARM_HUE, WARM_SAT, WARM_VAL);  // Start with warm white
         }
       }
     }
