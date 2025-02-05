@@ -37,6 +37,11 @@
 #define OS_DETECTION_DEBOUNCE 250  // 250ms debounce time
 #define OS_DETECTION_SINGLE_REPORT // Only report once when stable
 
+// Add with other RGB color definitions:
+#define WHITE_HUE 0    // White (0 hue for warmth control)
+#define WHITE_SAT 0    // Start with pure white
+#define WHITE_VAL 255  // Full brightness
+
 // Layer order is important - base layers must come first
 enum cockpit_layer
 {
@@ -54,20 +59,23 @@ enum cockpit_layer
 bool is_mac_mode = false;        // Default to Windows mode
 bool manual_os_override = false; // Track if user manually set the OS
 bool skadis_mode = false;  // Track if we're in Skadis display mode
+bool white_mode = false;  // Track if we're in white mode within Skadis mode
 
 // Keyboard initialization
 void keyboard_post_init_user(void)
 {
   // Initialize RGB
   rgblight_enable();
-  rgblight_mode(RGBLIGHT_MODE_STATIC_LIGHT);  // Set to static mode
+  rgblight_mode(RGBLIGHT_MODE_STATIC_LIGHT);
   rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL); // Start with green for Windows mode
 
   // Start in Windows mode by default
   is_mac_mode = false;
   manual_os_override = false;
+  skadis_mode = false;
+  white_mode = false;
   layer_clear();
-  layer_on(_WIN_MODE); // Enable Windows base layer
+  layer_on(_WIN_MODE);
 }
 
 // OS Detection callback
@@ -165,7 +173,8 @@ enum custom_keycodes
   KC_MY_COPY,
   KC_MY_PASTE,
   KC_MY_CUT,
-  SKADIS_MODE  // Add this new keycode
+  SKADIS_MODE,
+  WHITE_MODE
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -370,7 +379,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                                          ╰──────┴──────┴──────╯
 
     [_ADJUST] = LAYOUT_cockpit(
-        _______, MAC_MODE, WIN_MODE, GAME_MODE, _______, _______, RGB_TOG, SKADIS_MODE, _______, _______, _______, QK_BOOT,
+        _______, MAC_MODE, WIN_MODE, GAME_MODE, _______, _______, RGB_TOG, SKADIS_MODE, WHITE_MODE, _______, _______, QK_BOOT,
         KC_SLEP, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, QK_RBT,
         XXXXXXX, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, XXXXXXX,
         _______, _______,
@@ -393,6 +402,23 @@ bool encoder_update_user(uint8_t index, bool clockwise)
 {
   uint8_t layer = get_highest_layer(layer_state);
   bool shift_pressed = get_mods() & MOD_BIT(KC_LSFT);
+
+  if (layer == _ADJUST && skadis_mode && white_mode) {
+    if (index == 0) { /* Right encoder */
+      // Control warmth using saturation instead of hue
+      // This gives better control over warm/cool white
+      if (clockwise) {
+        if (rgblight_get_sat() < 30) rgblight_increase_sat();
+      } else {
+        if (rgblight_get_sat() > 0) rgblight_decrease_sat();
+      }
+      return false;
+    } else if (index == 1) { /* Left encoder */
+      // Control brightness
+      clockwise ? rgblight_increase_val() : rgblight_decrease_val();
+      return false;
+    }
+  }
 
   if (index == 0) { /* Right encoder */
     switch (layer) {
@@ -477,10 +503,20 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
   {
   case SKADIS_MODE:
     if (record->event.pressed) {
-      skadis_mode = !skadis_mode;  // Toggle Skadis mode
+      skadis_mode = !skadis_mode;
       if (skadis_mode) {
-        // When entering Skadis mode, enable RGB but don't change colors
         rgblight_enable();
+        if (white_mode) {
+          rgblight_sethsv(WHITE_HUE, WHITE_SAT, WHITE_VAL);
+        }
+      }
+    }
+    return false;
+  case WHITE_MODE:
+    if (record->event.pressed && skadis_mode) {
+      white_mode = !white_mode;
+      if (white_mode) {
+        rgblight_sethsv(0, 0, 255);  // Pure white using HSV
       }
     }
     return false;
