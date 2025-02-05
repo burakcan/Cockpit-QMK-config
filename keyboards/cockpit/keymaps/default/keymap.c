@@ -38,9 +38,9 @@
 #define OS_DETECTION_SINGLE_REPORT // Only report once when stable
 
 // Add with other RGB color definitions:
-#define WHITE_HUE 10    // Slightly warm white as default
-#define WHITE_SAT 10    // Very slight saturation for warmth
-#define WHITE_VAL 255   // Full brightness
+#define WARM_R 255    // Full red
+#define WARM_G 180    // Reduced green for warmth
+#define WARM_B 100    // Low blue for warmth
 
 // Layer order is important - base layers must come first
 enum cockpit_layer
@@ -405,16 +405,44 @@ bool encoder_update_user(uint8_t index, bool clockwise)
 
   if (layer == _ADJUST && skadis_mode && white_mode) {
     if (index == 0) { /* Right encoder */
-      // Control warmth using hue (0-30) with a fixed low saturation
+      // Control warmth by adjusting blue component
+      uint8_t r = rgblight_get_R();
+      uint8_t g = rgblight_get_G();
+      uint8_t b = rgblight_get_B();
+      
       if (clockwise) {
-        if (rgblight_get_hue() < 30) rgblight_increase_hue();
+        // Make cooler by increasing blue
+        if (b < 255) b += 5;
+        g = 180 + (b - 100) / 2; // Adjust green proportionally
       } else {
-        if (rgblight_get_hue() > 0) rgblight_decrease_hue();
+        // Make warmer by decreasing blue
+        if (b > 100) b -= 5;
+        g = 180 + (b - 100) / 2; // Adjust green proportionally
       }
+      rgblight_setrgb(255, g, b);
       return false;
     } else if (index == 1) { /* Left encoder */
-      // Control brightness (reversed direction)
-      clockwise ? rgblight_decrease_val() : rgblight_increase_val();
+      // Control brightness by scaling all components proportionally
+      uint8_t r = rgblight_get_R();
+      uint8_t g = rgblight_get_G();
+      uint8_t b = rgblight_get_B();
+      
+      if (!clockwise) { // Increase brightness
+        if (r < 255) {
+          float scale = (float)(r + 5) / r;
+          r = r * scale;
+          g = g * scale;
+          b = b * scale;
+        }
+      } else { // Decrease brightness
+        if (r > 5) {
+          float scale = (float)(r - 5) / r;
+          r = r * scale;
+          g = g * scale;
+          b = b * scale;
+        }
+      }
+      rgblight_setrgb(r, g, b);
       return false;
     }
   }
@@ -506,7 +534,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
       if (skadis_mode) {
         rgblight_enable();
         if (white_mode) {
-          rgblight_sethsv(WHITE_HUE, WHITE_SAT, WHITE_VAL);
+          rgblight_setrgb(WARM_R, WARM_G, WARM_B);
         }
       }
     }
@@ -515,7 +543,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
     if (record->event.pressed && skadis_mode) {
       white_mode = !white_mode;
       if (white_mode) {
-        rgblight_sethsv(WHITE_HUE, WHITE_SAT, WHITE_VAL);  // Start with slightly warm white
+        rgblight_setrgb(WARM_R, WARM_G, WARM_B);  // Start with warm white
       }
     }
     return false;
