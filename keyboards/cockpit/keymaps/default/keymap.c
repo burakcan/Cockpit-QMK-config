@@ -1,14 +1,5 @@
 #include QMK_KEYBOARD_H
 
-// Add this near the top of the file, after the includes
-#ifndef SECRET_1
-#define SECRET_1 ""  // Default to empty string if not defined during build
-#endif
-
-#if defined(SECRET_1)
-#pragma message "[DEBUG] Compiler received SECRET_1: " SECRET_1
-#endif
-
 // RGB configuration
 #define RGBLIGHT_LAYERS
 
@@ -62,6 +53,7 @@ enum cockpit_layer
 // OS detection and manual override state
 bool is_mac_mode = false;        // Default to Windows mode
 bool manual_os_override = false; // Track if user manually set the OS
+bool skadis_mode = false;  // Track if we're in Skadis display mode
 
 // Keyboard initialization
 void keyboard_post_init_user(void)
@@ -173,7 +165,7 @@ enum custom_keycodes
   KC_MY_COPY,
   KC_MY_PASTE,
   KC_MY_CUT,
-  KC_SECRET_1 // Add secret string keycode
+  SKADIS_MODE  // Add this new keycode
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -304,7 +296,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         XXXXXXX, KC_LCTL, KC_LALT, KC_LGUI, KC_LSFT, _______, KC_CAPS, KC_LEFT, KC_DOWN, KC_UP, KC_RGHT, XXXXXXX,
         XXXXXXX, _______, _______, _______, _______, _______, QK_CAPS_WORD_TOGGLE, KC_HOME, KC_PGDN, KC_PGUP, KC_END, XXXXXXX,
         _______, _______,
-        KC_SECRET_1, _______, _______, KC_ENT, KC_BSPC, KC_DEL,
+        _______, _______, _______, KC_ENT, KC_BSPC, KC_DEL,
         _______,
         _______, _______, _______),
 
@@ -378,7 +370,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     //                                          ╰──────┴──────┴──────╯
 
     [_ADJUST] = LAYOUT_cockpit(
-        _______, MAC_MODE, WIN_MODE, GAME_MODE, _______, _______, RGB_TOG, _______, _______, _______, _______, QK_BOOT,
+        _______, MAC_MODE, WIN_MODE, GAME_MODE, _______, _______, RGB_TOG, SKADIS_MODE, _______, _______, _______, QK_BOOT,
         KC_SLEP, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, QK_RBT,
         XXXXXXX, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, XXXXXXX,
         _______, _______,
@@ -483,34 +475,49 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
 {
   switch (keycode)
   {
+  case SKADIS_MODE:
+    if (record->event.pressed) {
+      skadis_mode = !skadis_mode;  // Toggle Skadis mode
+      if (skadis_mode) {
+        // When entering Skadis mode, enable RGB but don't change colors
+        rgblight_enable();
+      }
+    }
+    return false;
   case MAC_MODE:
     if (record->event.pressed)
     {
       is_mac_mode = true;
-      manual_os_override = true; // Set manual override
-      layer_move(_MAC_MODE);     // Switch to Mac base layer
-      rgblight_enable();
-      rgblight_sethsv(MAC_HUE, MAC_SAT, MAC_VAL);
+      manual_os_override = true;
+      layer_move(_MAC_MODE);
+      if (!skadis_mode) {  // Only change colors if not in Skadis mode
+        rgblight_enable();
+        rgblight_sethsv(MAC_HUE, MAC_SAT, MAC_VAL);
+      }
     }
     return false;
   case WIN_MODE:
     if (record->event.pressed)
     {
       is_mac_mode = false;
-      manual_os_override = true; // Set manual override
-      layer_move(_WIN_MODE);     // Switch to Windows base layer
-      rgblight_enable();
-      rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);
+      manual_os_override = true;
+      layer_move(_WIN_MODE);
+      if (!skadis_mode) {  // Only change colors if not in Skadis mode
+        rgblight_enable();
+        rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);
+      }
     }
     return false;
   case GAME_MODE:
     if (record->event.pressed)
     {
-      is_mac_mode = false;       // Use Windows-style shortcuts in gaming mode
-      manual_os_override = true; // Set manual override
-      layer_move(_GAME_MODE);    // Switch to Gaming base layer
-      rgblight_enable();
-      rgblight_sethsv(GAMING_HUE, GAMING_SAT, GAMING_VAL);
+      is_mac_mode = false;
+      manual_os_override = true;
+      layer_move(_GAME_MODE);
+      if (!skadis_mode) {  // Only change colors if not in Skadis mode
+        rgblight_enable();
+        rgblight_sethsv(GAMING_HUE, GAMING_SAT, GAMING_VAL);
+      }
     }
     return false;
   case KC_MY_COPY:
@@ -552,20 +559,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
       }
     }
     return false;
-  case KC_SECRET_1:
-    if (record->event.pressed) {
-        if (SECRET_1[0] != '\0') {
-            #ifdef CONSOLE_ENABLE
-            uprintf("[DEBUG] Sending SECRET_1: %s\n", SECRET_1);
-            #endif
-            send_string_P(PSTR(SECRET_1));
-        } else {
-            #ifdef CONSOLE_ENABLE
-            uprintf("[DEBUG] SECRET_1 is empty\n");
-            #endif
-        }
-    }
-    return false;
   default:
     return true;
   }
@@ -574,29 +567,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record)
 // Function to update RGB based on active layer
 layer_state_t layer_state_set_user(layer_state_t state)
 {
-  switch (get_highest_layer(state))
-  {
-  case _MEDIA:
-    rgblight_sethsv(MEDIA_HUE, MEDIA_SAT, MEDIA_VAL);
-    break;
-  case _NAV:
-    rgblight_sethsv(NAV_HUE, NAV_SAT, NAV_VAL);
-    break;
-  case _SYM:
-    rgblight_sethsv(SYM_HUE, SYM_SAT, SYM_VAL);
-    break;
-  case _NUM:
-    rgblight_sethsv(NUM_HUE, NUM_SAT, NUM_VAL);
-    break;
-  case _MAC_MODE:
-    rgblight_sethsv(MAC_HUE, MAC_SAT, MAC_VAL);
-    break;
-  case _WIN_MODE:
-    rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);
-    break;
-  case _GAME_MODE:
-    rgblight_sethsv(GAMING_HUE, GAMING_SAT, GAMING_VAL);
-    break;
+  if (!skadis_mode) {  // Only change colors if not in Skadis mode
+    switch (get_highest_layer(state))
+    {
+    case _MEDIA:
+      rgblight_sethsv(MEDIA_HUE, MEDIA_SAT, MEDIA_VAL);
+      break;
+    case _NAV:
+      rgblight_sethsv(NAV_HUE, NAV_SAT, NAV_VAL);
+      break;
+    case _SYM:
+      rgblight_sethsv(SYM_HUE, SYM_SAT, SYM_VAL);
+      break;
+    case _NUM:
+      rgblight_sethsv(NUM_HUE, NUM_SAT, NUM_VAL);
+      break;
+    case _MAC_MODE:
+      rgblight_sethsv(MAC_HUE, MAC_SAT, MAC_VAL);
+      break;
+    case _WIN_MODE:
+      rgblight_sethsv(WIN_HUE, WIN_SAT, WIN_VAL);
+      break;
+    case _GAME_MODE:
+      rgblight_sethsv(GAMING_HUE, GAMING_SAT, GAMING_VAL);
+      break;
+    }
   }
   return state;
 }
