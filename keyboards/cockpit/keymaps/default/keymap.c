@@ -78,6 +78,18 @@ bool white_mode = false;  // Track if we're in white mode within Skadis mode
 #define FIRMWARE_VERSION_MINOR 0
 #define FIRMWARE_VERSION_PATCH 0
 
+// At the top with other defines
+#define RGBLIGHT_EFFECT_ALTERNATING
+#define RGBLIGHT_EFFECT_BREATHING
+#define RGBLIGHT_EFFECT_CHRISTMAS
+#define RGBLIGHT_EFFECT_KNIGHT
+#define RGBLIGHT_EFFECT_RAINBOW_MOOD
+#define RGBLIGHT_EFFECT_RAINBOW_SWIRL
+#define RGBLIGHT_EFFECT_RGB_TEST
+#define RGBLIGHT_EFFECT_SNAKE
+#define RGBLIGHT_EFFECT_STATIC_GRADIENT
+#define RGBLIGHT_EFFECT_TWINKLE
+
 // Keyboard initialization
 void keyboard_post_init_user(void)
 {
@@ -748,8 +760,13 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         case CMD_SET_DIRECTION:
             if (skadis_mode) {
                 bool reverse = data[1] > 0;
-                rgblight_set_reverse(reverse);
-                response[1] = rgblight_get_reverse();
+                if (reverse) {
+                    rgblight_step_reverse();
+                } else {
+                    rgblight_step();
+                }
+                // Since we can't directly get the direction, we'll just confirm the command was received
+                response[1] = data[1];
             }
             break;
 

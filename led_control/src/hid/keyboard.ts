@@ -187,7 +187,8 @@ export class KeyboardHID {
       KeyboardHID.CMD_SET_DIRECTION, 
       reverse ? 1 : 0
     );
-    return Boolean(response[1]);
+    // Just return the requested state since we can't get actual state
+    return reverse;
   }
 
   async getVersion(): Promise<Version> {
