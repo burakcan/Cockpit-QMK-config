@@ -4,4 +4,5 @@ obj_*
 *.map
 build/
 .DS_Store
-.venv
+node_modules/
+dist/

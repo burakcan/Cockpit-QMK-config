@@ -1,2 +1,0 @@
-hidapi>=0.14.0
-# tkinter is part of Python's standard library, no need to specify it in requirements.txt 
