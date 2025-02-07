@@ -1,10 +1,18 @@
 #include QMK_KEYBOARD_H
 
+// Define RAW_EPSIZE before including raw_hid.h
+#ifndef RAW_EPSIZE
+#define RAW_EPSIZE 32
+#endif
+
+#include "raw_hid.h"
+
 // RGB configuration
 #define RGBLIGHT_LAYERS
 
 // RGB colors (using HSV values)
 #define GAMING_HUE 0 // Vibrant Red
+
 #define GAMING_SAT 255
 #define GAMING_VAL 200
 
@@ -653,4 +661,72 @@ layer_state_t layer_state_set_user(layer_state_t state)
     }
   }
   return state;
+}
+
+// Command definitions for Raw HID protocol
+#define CMD_SKADIS_MODE 0x01
+#define CMD_WHITE_MODE 0x02
+#define CMD_RGB_EFFECT 0x03
+#define CMD_RGB_COLOR 0x04
+#define CMD_RGB_ANIMATION 0x05
+
+void raw_hid_receive(uint8_t *data, uint8_t length) {
+    uint8_t command = data[0];
+    uint8_t response[32] = {0};  // Use fixed size of 32 instead of RAW_EPSIZE
+    response[0] = command; // Echo back the command in responses
+    
+    switch (command) {
+        case CMD_SKADIS_MODE:
+            skadis_mode = data[1] > 0;
+            if (skadis_mode) {
+                rgblight_enable();
+                if (white_mode) {
+                    rgblight_sethsv(WARM_HUE, WARM_SAT, WARM_VAL);
+                }
+            }
+            response[1] = skadis_mode;
+            break;
+            
+        case CMD_WHITE_MODE:
+            if (skadis_mode) {
+                white_mode = data[1] > 0;
+                if (white_mode) {
+                    rgblight_sethsv(WARM_HUE, WARM_SAT, WARM_VAL);
+                }
+                response[1] = white_mode;
+            }
+            break;
+            
+        case CMD_RGB_EFFECT:
+            if (skadis_mode) {
+                uint8_t mode = data[1];
+                if (mode <= RGBLIGHT_MODE_TWINKLE) {
+                    rgblight_mode(mode);
+                }
+                response[1] = rgblight_get_mode();
+            }
+            break;
+            
+        case CMD_RGB_COLOR:
+            if (skadis_mode) {
+                uint8_t hue = data[1];
+                uint8_t sat = data[2];
+                uint8_t val = data[3];
+                rgblight_sethsv(hue, sat, val);
+                response[1] = rgblight_get_hue();
+                response[2] = rgblight_get_sat();
+                response[3] = rgblight_get_val();
+            }
+            break;
+            
+        case CMD_RGB_ANIMATION:
+            if (skadis_mode) {
+                uint8_t animation_speed = data[1];
+                rgblight_set_speed(animation_speed);
+                response[1] = rgblight_get_speed();
+            }
+            break;
+    }
+    
+    raw_hid_send(response, length);
 }

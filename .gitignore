@@ -4,3 +4,4 @@ obj_*
 *.map
 build/
 .DS_Store
+.venv
