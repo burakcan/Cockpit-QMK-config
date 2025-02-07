@@ -73,6 +73,11 @@ bool manual_os_override = false; // Track if user manually set the OS
 bool skadis_mode = false;  // Track if we're in Skadis display mode
 bool white_mode = false;  // Track if we're in white mode within Skadis mode
 
+// Add at the top with other definitions
+#define FIRMWARE_VERSION_MAJOR 1
+#define FIRMWARE_VERSION_MINOR 0
+#define FIRMWARE_VERSION_PATCH 0
+
 // Keyboard initialization
 void keyboard_post_init_user(void)
 {
@@ -669,6 +674,9 @@ layer_state_t layer_state_set_user(layer_state_t state)
 #define CMD_RGB_EFFECT 0x03
 #define CMD_RGB_COLOR 0x04
 #define CMD_RGB_ANIMATION 0x05
+#define CMD_GET_STATE 0x0F
+#define CMD_SET_DIRECTION 0x06
+#define CMD_GET_VERSION 0x0E
 
 void raw_hid_receive(uint8_t *data, uint8_t length) {
     uint8_t command = data[0];
@@ -725,6 +733,30 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
                 rgblight_set_speed(animation_speed);
                 response[1] = rgblight_get_speed();
             }
+            break;
+
+        case CMD_GET_STATE:  // 0x0F
+            response[1] = rgblight_get_mode();
+            response[2] = rgblight_get_hue();
+            response[3] = rgblight_get_sat();
+            response[4] = rgblight_get_val();
+            response[5] = rgblight_get_speed();
+            response[6] = skadis_mode;
+            response[7] = white_mode;
+            break;
+
+        case CMD_SET_DIRECTION:
+            if (skadis_mode) {
+                bool reverse = data[1] > 0;
+                rgblight_set_reverse(reverse);
+                response[1] = rgblight_get_reverse();
+            }
+            break;
+
+        case CMD_GET_VERSION:
+            response[1] = FIRMWARE_VERSION_MAJOR;
+            response[2] = FIRMWARE_VERSION_MINOR;
+            response[3] = FIRMWARE_VERSION_PATCH;
             break;
     }
     

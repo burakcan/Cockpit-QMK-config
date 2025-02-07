@@ -3,7 +3,6 @@ import { Command } from 'commander';
 import { KeyboardHID } from './hid/keyboard.js';
 
 const program = new Command();
-const kb = new KeyboardHID();
 
 program
   .name('led-control')
@@ -18,16 +17,28 @@ program
 
 const opts = program.opts();
 
-if (opts.interactive) {
-  import('./ui.js').then(ui => ui.startUI());
-} else {
-  if (opts.skadis) kb.setSkadisMode(opts.skadis === 'on');
-  if (opts.white) kb.setWhiteMode(opts.white === 'on');
-  if (opts.effect) kb.setRGBEffect(parseInt(opts.effect));
-  if (opts.color) {
-    const [h,s,v] = opts.color.split(',').map(Number);
-    kb.setRGBColor(h,s,v);
+try {
+  const keyboard = new KeyboardHID();
+  
+  if (opts.interactive) {
+    import('./ui.js').then(ui => ui.startUI());
+  } else {
+    if (opts.skadis) keyboard.setSkadisMode(opts.skadis === 'on');
+    if (opts.white) keyboard.setWhiteMode(opts.white === 'on');
+    if (opts.effect) keyboard.setRGBEffect(parseInt(opts.effect));
+    if (opts.color) {
+      const [h, s, v] = opts.color.split(',').map(Number);
+      console.log(`Setting color to HSV(${h}, ${s}, ${v})`);
+      keyboard.setRGBColor(h, s, v);
+    }
+    if (opts.animationSpeed) keyboard.setAnimationSpeed(parseInt(opts.animationSpeed));
+    process.exit(0);
   }
-  if (opts.animationSpeed) kb.setAnimationSpeed(parseInt(opts.animationSpeed));
-  process.exit(0);
+} catch (error) {
+  console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+  console.error('Please ensure:');
+  console.error('1. The keyboard is properly connected');
+  console.error('2. You have the necessary permissions to access HID devices');
+  console.error('3. The keyboard firmware supports Raw HID communication');
+  process.exit(1);
 } 
