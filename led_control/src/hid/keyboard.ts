@@ -6,6 +6,13 @@ export interface Version {
   patch: number;
 }
 
+enum LogLevel {
+  NONE = 0,
+  ERROR = 1,
+  INFO = 2,
+  DEBUG = 3
+}
+
 export class KeyboardHID {
   private device: HID.HID | null = null;
   
@@ -22,14 +29,31 @@ export class KeyboardHID {
   private static readonly CMD_GET_VERSION = 0x0E;
   private static readonly CMD_GET_STATE = 0x0F;
 
+  private static logLevel = LogLevel.NONE;
+
   constructor() {
+    // Can be set via environment variable: LOGLEVEL=none|error|info|debug
+    const level = process.env.LOGLEVEL?.toLowerCase();
+    if (level === 'none') KeyboardHID.logLevel = LogLevel.NONE;
+    if (level === 'error') KeyboardHID.logLevel = LogLevel.ERROR;
+    if (level === 'info') KeyboardHID.logLevel = LogLevel.INFO;
+    if (level === 'debug') KeyboardHID.logLevel = LogLevel.DEBUG;
+    
     this.connect();
+  }
+
+  private log(level: LogLevel, ...args: any[]) {
+    if (level <= KeyboardHID.logLevel) {
+      const prefix = level === LogLevel.ERROR ? '❌' :
+                    level === LogLevel.INFO ? 'ℹ️' : '🔍';
+      console.log(prefix, ...args);
+    }
   }
 
   private connect() {
     try {
       const allDevices = HID.devices();
-      console.log('Available HID devices:', allDevices);
+      this.log(LogLevel.DEBUG, 'Available HID devices:', allDevices);
 
       // Filter for Raw HID interface
       const devices = allDevices.filter(d => 
@@ -38,7 +62,7 @@ export class KeyboardHID {
         d.usagePage === 0xFF60 && // 65376 in decimal
         d.usage === 0x61        // 97 in decimal
       );
-      console.log('Filtered keyboard devices:', devices);
+      this.log(LogLevel.DEBUG, 'Filtered keyboard devices:', devices);
 
       if (devices.length === 0) {
         throw new Error('No Raw HID interface found');
@@ -51,14 +75,14 @@ export class KeyboardHID {
 
       try {
         this.device = new HID.HID(devicePath);
-        console.log('Successfully connected to Raw HID interface at path:', devicePath);
+        this.log(LogLevel.INFO, 'Successfully connected to keyboard');
       } catch (e: unknown) {
-        console.error('Failed to open HID device:', e);
+        this.log(LogLevel.ERROR, 'Failed to open HID device:', e);
         throw new Error(`Failed to open HID device: ${e instanceof Error ? e.message : 'Unknown error'}`);
       }
 
     } catch (e: unknown) {
-      console.error('Failed to connect:', e);
+      this.log(LogLevel.ERROR, 'Failed to connect:', e);
       if (e instanceof Error) {
         throw new Error(`Keyboard connection failed: ${e.message}`);
       }
@@ -76,12 +100,11 @@ export class KeyboardHID {
       report[1] = cmd;
       args.forEach((arg, i) => report[i + 2] = arg);
 
-      console.log('Sending HID report:', report);
+      this.log(LogLevel.INFO, `📤 CMD ${cmd}:`, args);
       this.device.write(report);
       
-      // Wait for response
       const response = await this.device.readTimeout(1000);
-      console.log('Received response:', response);
+      this.log(LogLevel.INFO, `📥 RSP ${response[0]}:`, response.slice(1, args.length + 2));
 
       if (response[0] !== cmd) {
         throw new Error('Invalid response command');
@@ -89,7 +112,7 @@ export class KeyboardHID {
 
       return response;
     } catch (e) {
-      console.error('Failed to send command:', e);
+      this.log(LogLevel.ERROR, 'Failed to send command:', e);
       if (e instanceof Error) {
         throw new Error(`Failed to send command: ${e.message}`);
       }
@@ -97,14 +120,13 @@ export class KeyboardHID {
     }
   }
 
-  // Add reconnection method
   public reconnect() {
-    console.log('Attempting to reconnect...');
+    this.log(LogLevel.INFO, 'Attempting to reconnect...');
     if (this.device) {
       try {
         this.device.close();
       } catch (e: unknown) {
-        console.warn('Error closing existing device:', e);
+        this.log(LogLevel.ERROR, 'Error closing existing device:', e);
       }
       this.device = null;
     }
@@ -136,7 +158,8 @@ export class KeyboardHID {
   }
 
   async setAnimationSpeed(speed: number) {
-    const response = await this.sendCommandWithResponse(0x05, speed);
+    const response = await this.sendCommandWithResponse(KeyboardHID.CMD_ANIMATION_SPEED, speed);
+    this.log(LogLevel.DEBUG, `Setting animation speed to ${speed}`);
     return response[1];
   }
 

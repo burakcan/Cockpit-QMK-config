@@ -81,51 +81,86 @@ const ColorControl = ({
   value: number;
   onUpdate: (h: number, s: number, v: number) => void;
 }) => {
+  const [activeControl, setActiveControl] = useState<
+    "hue" | "saturation" | "brightness"
+  >("hue");
+
   useInput((input, key) => {
-    if (input.toLowerCase() === "b") {
-      onUpdate(hue, saturation, Math.min(255, value + 16));
+    if (key.tab) {
+      setActiveControl((current) => {
+        if (current === "hue") return "saturation";
+        if (current === "saturation") return "brightness";
+        return "hue";
+      });
     }
-    if (input.toLowerCase() === "d") {
-      onUpdate(hue, saturation, Math.max(0, value - 16));
+
+    // Handle quick color shortcuts
+    switch (input.toLowerCase()) {
+      case "r":
+        onUpdate(0, 255, value);
+        break;
+      case "g":
+        onUpdate(85, 255, value);
+        break;
+      case "b":
+        onUpdate(170, 255, value);
+        break;
+      case "w":
+        onUpdate(0, 0, value);
+        break;
+      case "y":
+        onUpdate(43, 255, value);
+        break;
+      case "p":
+        onUpdate(213, 255, value);
+        break;
+      case "c":
+        onUpdate(128, 255, value);
+        break;
     }
   });
 
   return (
     <Box flexDirection="column">
-      <Text bold>Color Controls</Text>
+      <Text bold>Color Controls (Tab to switch, Up/Down to adjust)</Text>
+      <Box>
+        <Box marginRight={2}>
+          <Text>Hue {activeControl === "hue" ? "▶" : " "}</Text>
+          <ValueSlider
+            label="H"
+            value={hue}
+            onChange={(newH) => onUpdate(newH, saturation, value)}
+            vertical={true}
+            showPreview
+            previewChar="■"
+            active={activeControl === "hue"}
+          />
+        </Box>
 
-      <Box marginY={1}>
-        <Text>Hue (Color) - Left/Right arrows to adjust</Text>
-        <ValueSlider
-          label="Hue"
-          value={hue}
-          onChange={(newH) => onUpdate(newH, saturation, value)}
-          showPreview
-          previewChar="■"
-        />
+        <Box marginRight={2}>
+          <Text>Saturation {activeControl === "saturation" ? "▶" : " "}</Text>
+          <ValueSlider
+            label="S"
+            value={saturation}
+            onChange={(newS) => onUpdate(hue, newS, value)}
+            vertical={true}
+            showPreview
+            active={activeControl === "saturation"}
+          />
+        </Box>
+
+        <Box>
+          <Text>Brightness {activeControl === "brightness" ? "▶" : " "}</Text>
+          <ValueSlider
+            label="V"
+            value={value}
+            onChange={(newV) => onUpdate(hue, saturation, newV)}
+            vertical={true}
+            showPreview
+            active={activeControl === "brightness"}
+          />
+        </Box>
       </Box>
-
-      <Box marginY={1}>
-        <Text>Saturation (Intensity) - Up/Down arrows to adjust</Text>
-        <ValueSlider
-          label="Saturation"
-          value={saturation}
-          onChange={(newS) => onUpdate(hue, newS, value)}
-          vertical
-          showPreview
-        />
-      </Box>
-
-      <Box marginY={1}>
-        <Text>Brightness - B/D keys to adjust</Text>
-        <ValueSlider
-          label="Brightness"
-          value={value}
-          onChange={(newV) => onUpdate(hue, saturation, newV)}
-          showPreview
-        />
-      </Box>
-
       <Box marginTop={1}>
         <Text>
           Quick Colors: [R]ed [G]reen [B]lue [W]hite [Y]ellow [P]urple [C]yan
@@ -135,16 +170,18 @@ const ColorControl = ({
   );
 };
 
-// Enhanced ValueSlider with preview
+// Update ValueSlider to use only vertical controls with up/down arrows
 const ValueSlider = ({
   label,
   value,
   onChange,
   min = 0,
   max = 255,
-  vertical = false,
+  vertical = true,
   showPreview = false,
   previewChar = "●",
+  active = false,
+  useLeftRight = false,
 }: {
   label: string;
   value: number;
@@ -154,6 +191,8 @@ const ValueSlider = ({
   vertical?: boolean;
   showPreview?: boolean;
   previewChar?: string;
+  active?: boolean;
+  useLeftRight?: boolean;
 }) => {
   const width = 20;
   const boundedValue = Math.max(min, Math.min(max, value));
@@ -161,22 +200,33 @@ const ValueSlider = ({
   const safePosition = Math.max(0, Math.min(width - 1, position));
 
   useInput((input, key) => {
-    if (vertical) {
-      if (key.upArrow) onChange(Math.min(max, value + 16));
-      if (key.downArrow) onChange(Math.max(min, value - 16));
+    if (!active) return;
+
+    const step = key.shift ? 16 : 1;
+
+    if (useLeftRight) {
+      if (key.leftArrow) {
+        onChange(Math.max(min, value - step));
+      } else if (key.rightArrow) {
+        onChange(Math.min(max, value + step));
+      }
     } else {
-      if (key.leftArrow) onChange(Math.max(min, value - 16));
-      if (key.rightArrow) onChange(Math.min(max, value + 16));
+      if (key.upArrow) {
+        onChange(Math.min(max, value + step));
+      } else if (key.downArrow) {
+        onChange(Math.max(min, value - step));
+      }
     }
   });
 
-  const slider = vertical
-    ? Array.from({ length: width })
+  // Create horizontal or vertical slider based on useLeftRight
+  const slider = useLeftRight
+    ? "─".repeat(safePosition) + "●" + "─".repeat(width - safePosition - 1)
+    : Array.from({ length: width })
         .fill("─")
         .map((char, i) => (i === safePosition ? "●" : char))
         .reverse()
-        .join("\n")
-    : "─".repeat(safePosition) + "●" + "─".repeat(width - safePosition - 1);
+        .join("\n");
 
   return (
     <Box flexDirection="column">
@@ -190,47 +240,47 @@ const ValueSlider = ({
 
 const effectDescriptions: Record<string, string> = {
   "1": "Static single color - Basic solid color mode",
-  "2": "Breathing 1 - Slow fade in/out",
-  "3": "Breathing 2 - Medium fade in/out",
-  "4": "Breathing 3 - Fast fade in/out",
-  "5": "Breathing 4 - Rapid fade in/out",
-  "6": "Rainbow Mood 1 - Slow color cycling",
-  "7": "Rainbow Mood 2 - Medium color cycling",
-  "8": "Rainbow Mood 3 - Fast color cycling",
-  "9": "Rainbow Swirl 1 - Slow clockwise rotation",
-  "10": "Rainbow Swirl 2 - Medium clockwise rotation",
-  "11": "Rainbow Swirl 3 - Fast clockwise rotation",
-  "12": "Rainbow Swirl 4 - Slow counter-clockwise",
-  "13": "Rainbow Swirl 5 - Medium counter-clockwise",
-  "14": "Rainbow Swirl 6 - Fast counter-clockwise",
-  "15": "Snake 1 - Slow moving dot",
-  "16": "Snake 2 - Medium moving dot",
-  "17": "Snake 3 - Fast moving dot",
-  "18": "Snake 4 - Slow moving line",
-  "19": "Snake 5 - Medium moving line",
-  "20": "Snake 6 - Fast moving line",
-  "21": "Knight 1 - Slow back and forth",
-  "22": "Knight 2 - Medium back and forth",
-  "23": "Knight 3 - Fast back and forth",
-  "24": "Christmas - Red and green alternating",
-  "25": "Static Gradient 1 - Red to Blue",
+  "2": "Breathing - Slow color fade in/out",
+  "3": "Breathing - Medium color fade in/out",
+  "4": "Breathing - Fast color fade in/out",
+  "5": "Breathing - Very fast color fade in/out",
+  "6": "Rainbow Wave - Slow horizontal wave",
+  "7": "Rainbow Wave - Medium horizontal wave",
+  "8": "Rainbow Wave - Fast horizontal wave",
+  "9": "Rainbow Wave - Slow vertical wave",
+  "10": "Rainbow Wave - Medium vertical wave",
+  "11": "Rainbow Wave - Fast vertical wave",
+  "12": "Rainbow Wave - Slow diagonal wave",
+  "13": "Rainbow Wave - Medium diagonal wave",
+  "14": "Rainbow Wave - Fast diagonal wave",
+  "15": "Rainbow - Slow color cycle per key",
+  "16": "Rainbow - Medium color cycle per key",
+  "17": "Rainbow - Fast color cycle per key",
+  "18": "Rainbow - Slow ripple effect",
+  "19": "Rainbow - Medium ripple effect",
+  "20": "Rainbow - Fast ripple effect",
+  "21": "Spectrum - Slow color cycle all keys",
+  "22": "Spectrum - Medium color cycle all keys",
+  "23": "Spectrum - Fast color cycle all keys",
+  "24": "Christmas - Red and green pattern",
+  "25": "Static Gradient 1 - Purple to Blue",
   "26": "Static Gradient 2 - Red to Purple",
   "27": "Static Gradient 3 - Blue to Green",
-  "28": "Static Gradient 4 - Rainbow",
+  "28": "Static Gradient 4 - Full Rainbow",
   "29": "Static Gradient 5 - Red to Orange",
   "30": "Static Gradient 6 - Green to Cyan",
   "31": "Static Gradient 7 - Blue to Purple",
   "32": "Static Gradient 8 - Yellow to Red",
   "33": "Static Gradient 9 - Purple to Pink",
   "34": "Static Gradient 10 - Rainbow Reversed",
-  "35": "RGB Test - Cycles through R,G,B",
-  "36": "Alternating - On/Off pattern",
-  "37": "Twinkle 1 - Slow random flashing",
-  "38": "Twinkle 2 - Medium random flashing",
-  "39": "Twinkle 3 - Fast random flashing",
-  "40": "Twinkle 4 - Very fast random",
-  "41": "Twinkle 5 - Strobe effect",
-  "42": "Twinkle 6 - Random strobe",
+  "35": "RGB Test - Red, Green, Blue sequence",
+  "36": "Wave - Alternating light pattern",
+  "37": "Stars - Slow random twinkling",
+  "38": "Stars - Medium random twinkling",
+  "39": "Stars - Fast random twinkling",
+  "40": "Stars - Very fast random twinkling",
+  "41": "Stars - Rapid strobe effect",
+  "42": "Stars - Random strobe pattern",
 } as const;
 
 const HelpScreen = () => (
@@ -239,7 +289,9 @@ const HelpScreen = () => (
     <Text>Tab/Shift+Tab: Navigate items</Text>
     <Text>Enter: Select item</Text>
     <Text>Esc: Return to main menu</Text>
-    <Text>Left/Right Arrow: Adjust values</Text>
+    <Text>Up/Down Arrow: Adjust color values</Text>
+    <Text>Left/Right Arrow: Adjust animation speed</Text>
+    <Text>Hold Shift: Adjust values faster</Text>
     <Text>H: Show/hide this help</Text>
     <Text>Q: Quit application</Text>
   </Box>
@@ -305,7 +357,7 @@ const ColorWheel = ({
 
 const App = () => {
   const [kb] = useState(() => new KeyboardHID());
-  const [selectedEffect, setEffect] = useState(0);
+  const [selectedEffect, setSelectedEffect] = useState(0);
   const [h, setH] = useState(0);
   const [s, setS] = useState(255);
   const [v, setV] = useState(255);
@@ -319,6 +371,8 @@ const App = () => {
   const [whiteEnabled, setWhiteEnabled] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [version, setVersion] = useState<Version | null>(null);
+  const [previewEffect, setPreviewEffect] = useState<number | null>(null);
+  const [previousEffect, setPreviousEffect] = useState<number | null>(null);
 
   useEffect(() => {
     const initialize = async () => {
@@ -329,7 +383,9 @@ const App = () => {
           kb.getVersion(),
         ]);
 
-        setEffect(effects.findIndex((e) => parseInt(e.value) === state.mode));
+        setSelectedEffect(
+          effects.findIndex((e) => parseInt(e.value) === state.mode)
+        );
         setH(state.hue);
         setS(state.saturation);
         setV(state.value);
@@ -352,18 +408,17 @@ const App = () => {
   }, []);
 
   const handleEffectSelect = async (item: MenuItem) => {
-    setLoading(true);
     try {
-      await kb.setRGBEffect(parseInt(item.value));
-      setEffect(parseInt(item.value));
-      setStatus("Effect applied successfully");
+      const effectNumber = parseInt(item.value);
+      await kb.setRGBEffect(effectNumber);
+      setSelectedEffect(effects.findIndex((e) => e.value === item.value));
+      setStatus(`Effect set to: ${item.label}`);
+      setPreviousEffect(null); // Clear preview state
     } catch (error) {
       setStatus(
         `Error: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
-    setLoading(false);
-    setMode("main");
   };
 
   const handleColorSelect = async (item: MenuItem) => {
@@ -503,6 +558,40 @@ const App = () => {
     return null;
   };
 
+  // Add effect preview handling
+  useEffect(() => {
+    if (mode === "effects" && previewEffect !== null) {
+      const applyPreview = async () => {
+        try {
+          if (previousEffect === null) {
+            // Store current effect before preview
+            const state = await kb.getCurrentState();
+            setPreviousEffect(state.mode);
+          }
+          await kb.setRGBEffect(previewEffect);
+        } catch (error) {
+          console.error("Preview error:", error);
+        }
+      };
+      applyPreview();
+    }
+  }, [previewEffect]);
+
+  // Handle ESC in effects mode
+  useInput((input, key) => {
+    if (key.escape) {
+      if (mode === "effects" && previousEffect !== null) {
+        // Restore previous effect
+        kb.setRGBEffect(previousEffect);
+        setPreviewEffect(null);
+        setPreviousEffect(null);
+      }
+      if (mode !== "main") {
+        setMode("main");
+      }
+    }
+  });
+
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
@@ -538,13 +627,25 @@ const App = () => {
           </Box>
 
           <Box flexDirection="column" marginBottom={1}>
+            <Text>Animation Speed - Left/Right arrows to adjust</Text>
             <ValueSlider
               label="Animation Speed"
               value={speed}
-              onChange={(newSpeed: number) => {
-                setSpeed(newSpeed);
-                kb.setAnimationSpeed(newSpeed);
+              onChange={async (newSpeed: number) => {
+                try {
+                  await kb.setAnimationSpeed(newSpeed);
+                  setSpeed(newSpeed);
+                  setStatus("Animation speed updated");
+                } catch (error) {
+                  setStatus(
+                    `Error: ${
+                      error instanceof Error ? error.message : "Unknown error"
+                    }`
+                  );
+                }
               }}
+              active={true}
+              useLeftRight={true}
             />
           </Box>
 
@@ -564,7 +665,14 @@ const App = () => {
 
       {mode === "effects" && (
         <Box flexDirection="column">
-          <SelectInput items={effects} onSelect={handleEffectSelect} />
+          <SelectInput
+            items={effects}
+            onSelect={handleEffectSelect}
+            onHighlight={(item) => {
+              const effectNumber = parseInt(item.value);
+              setPreviewEffect(effectNumber);
+            }}
+          />
           {currentEffectDescription && (
             <Box marginTop={1}>
               <Text>{currentEffectDescription}</Text>

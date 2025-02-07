@@ -742,7 +742,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         case CMD_RGB_ANIMATION:
             if (skadis_mode) {
                 uint8_t animation_speed = data[1];
-                rgblight_set_speed(animation_speed);
+                rgblight_set_speed(255 - animation_speed); // Invert speed value
                 response[1] = rgblight_get_speed();
             }
             break;

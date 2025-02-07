@@ -4,66 +4,107 @@ A Node.js CLI and interactive application to control RGB lighting on QMK keyboar
 
 ## Features
 
-- Interactive UI with color wheel and visual sliders
-- Complete RGB effect control (42 different effects)
-- HSV color control with visual feedback
+- Interactive UI with visual controls
+- 42 RGB lighting effects with live preview
+- HSV color control with visual sliders and color wheel
+- Quick color presets (Red, Green, Blue, etc.)
 - Animation speed control
-- Skadis/White mode toggles
-- Settings persistence in EEPROM
 - Effect direction control
+- Skadis/White mode toggles
 - Detailed effect descriptions
-- Preset color selection
+- Live effect preview when selecting
 - Version information display
 
 ## Installation
 
 ```bash
+# Install pnpm if you haven't already
+npm install -g pnpm
+
 # Install dependencies
-npm install
+pnpm install
 
 # Build the application
-npm run build
+pnpm build
 ```
 
 ## Usage
 
+### Interactive Mode (Recommended)
+
+```bash
+# Run without logs (default)
+pnpm start -i
+
+# Run with error logs only
+$env:LOGLEVEL='error'; pnpm start -i
+
+# Run with info logs (includes commands and responses)
+$env:LOGLEVEL='info'; pnpm start -i
+
+# Run with debug logs (includes all HID device details)
+$env:LOGLEVEL='debug'; pnpm start -i
+
+# To set log level permanently in PowerShell:
+$env:LOGLEVEL='none'  # or 'error', 'info', 'debug'
+```
+
 ### Command Line Interface
 
 ```bash
-# Start interactive UI mode (recommended)
-npm start -i
-
 # Set RGB color (HSV values: 0-255)
-npm start -c 0,255,255    # Red
-npm start -c 85,255,255   # Green
-npm start -c 170,255,255  # Blue
+pnpm start -c 0,255,255    # Red
+pnpm start -c 85,255,255   # Green
+pnpm start -c 170,255,255  # Blue
 
 # Toggle Skadis display mode
-npm start -s on
-npm start -s off
+pnpm start -s on
+pnpm start -s off
 
 # Toggle white mode (in Skadis mode)
-npm start -w on
-npm start -w off
+pnpm start -w on
+pnpm start -w off
 
 # Set RGB effect (1-42)
-npm start -e 1    # Static Light
-npm start -e 2    # Breathing 1
+pnpm start -e 1    # Static Light
+pnpm start -e 2    # Breathing 1
 # See effect list below for all options
 
 # Set animation speed (0-255)
-npm start -a 128  # Medium speed
+pnpm start -a 128  # Medium speed
 ```
 
 ### Interactive UI Controls
 
-- Tab/Shift+Tab: Navigate through options
-- Enter: Select option
-- Left/Right Arrow: Adjust values
-- Up/Down Arrow: Adjust saturation in color wheel
+#### Main Menu
+
+- Tab/Shift+Tab: Navigate menu items
+- Enter: Select menu item
+- Left/Right Arrow: Adjust animation speed
 - H: Show/hide help screen
-- Esc: Return to main menu
 - Q: Quit application
+
+#### Effect Selection
+
+- Up/Down: Navigate effects
+- Enter: Select effect
+- Esc: Cancel and restore previous effect
+- Live preview while navigating
+
+#### Color Control
+
+- Tab: Switch between Hue/Saturation/Brightness controls
+- Left/Right Arrow: Adjust hue (when active)
+- Up/Down Arrow: Adjust saturation (when active)
+- B/D Keys: Increase/decrease brightness
+- Quick color shortcuts:
+  - R: Red
+  - G: Green
+  - B: Blue
+  - W: White
+  - Y: Yellow
+  - P: Purple
+  - C: Cyan
 
 ### Available Effects
 
@@ -79,29 +120,7 @@ npm start -a 128  # Medium speed
 4. Alternating
    37-42. Twinkle (6 variations)
 
-### Settings Persistence
-
-The application supports saving and loading settings to/from the keyboard's EEPROM memory. This includes:
-
-- Current effect mode
-- HSV color values
-- Animation speed
-- Skadis/White mode states
-- Effect direction
-
-## Development
-
-```bash
-# Watch mode during development
-npm run dev
-
-# Build for production
-npm run build
-```
-
 ## Troubleshooting
-
-If you encounter errors:
 
 1. Ensure keyboard is connected and powered on
 2. Run with administrator privileges on Windows
@@ -112,17 +131,22 @@ If you encounter errors:
 KERNEL=="hidraw*", ATTRS{idVendor}=="4648", ATTRS{idProduct}=="0001", MODE="0666"
 ```
 
-4. Verify your keyboard's VID/PID matches the configured values:
-
-```typescript
-private static readonly VID = 0x4648;
-private static readonly PID = 0x0001;
-```
-
-5. Ensure QMK firmware has Raw HID enabled in `rules.mk`:
+4. Verify QMK firmware has Raw HID enabled in `rules.mk`:
 
 ```make
 RAW_ENABLE = yes
+RGBLIGHT_ENABLE = yes
+RGBLIGHT_ANIMATIONS = yes
+```
+
+## Development
+
+```bash
+# Watch mode during development
+pnpm dev
+
+# Build for production
+pnpm build
 ```
 
 ## Dependencies
